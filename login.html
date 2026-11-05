@@ -1,0 +1,99 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FEUERWOLF HOME – Login</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:Arial,sans-serif;
+  color:white;
+  background:radial-gradient(circle at top,#351010,#090909 65%);
+}
+.login{
+  width:90%;
+  max-width:420px;
+  padding:38px;
+  background:#151515;
+  border:1px solid #612020;
+  border-radius:16px;
+  box-shadow:0 0 35px #000;
+  text-align:center;
+}
+.logo{
+  font-size:30px;
+  font-weight:bold;
+  color:#e52b2b;
+  letter-spacing:2px;
+}
+.subtitle{color:#aaa;margin-bottom:30px}
+label{
+  display:block;
+  text-align:left;
+  margin:16px 0 7px;
+  color:#ddd;
+}
+input{
+  width:100%;
+  padding:14px;
+  background:#242424;
+  border:1px solid #444;
+  border-radius:7px;
+  color:white;
+  font-size:15px;
+}
+button{
+  width:100%;
+  margin-top:24px;
+  padding:14px;
+  background:#b91f1f;
+  border:0;
+  border-radius:7px;
+  color:white;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+}
+button:hover{background:#e12c2c}
+a{color:#e74747;text-decoration:none}
+.footer{margin-top:25px;color:#888;font-size:13px}
+</style>
+</head>
+<body>
+<div class="login">
+  <div class="logo">FEUERWOLF</div>
+  <h2>MEMBER LOGIN</h2>
+  <p class="subtitle">Eine Community. Ein Zusammenhalt.</p>
+
+  <form id="loginForm">
+    <label for="email">E-Mail-Adresse</label>
+    <input id="email" type="email" placeholder="Deine E-Mail" required>
+
+    <label for="password">Passwort</label>
+    <input id="password" type="password" placeholder="Dein Passwort" required>
+
+    <button type="submit">ANMELDEN</button>
+  </form>
+
+  <p><a href="member.html">Zum Member Center</a></p>
+  <div class="footer">
+    FEUERWOLF HOME © 2026<br>
+    Sicher. Gemeinsam. Stark.
+  </div>
+</div>
+
+<script>
+document.getElementById("loginForm").addEventListener("submit",function(e){
+  e.preventDefault();
+  alert("Die Anmeldung ist noch nicht freigeschaltet. Das ist zunächst eine Design-Demo.");
+});
+</script>
+</body>
+</html>
