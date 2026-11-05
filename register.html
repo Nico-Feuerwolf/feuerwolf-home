@@ -1,0 +1,87 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FEUERWOLF HOME – Registrierung</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;display:flex;align-items:center;
+  justify-content:center;font-family:Arial,sans-serif;color:white;
+  background:radial-gradient(circle at top,#351010,#090909 65%);
+  padding:20px;
+}
+.register{
+  width:100%;max-width:460px;padding:35px;
+  background:#151515;border:1px solid #612020;
+  border-radius:16px;box-shadow:0 0 35px #000;
+}
+.logo{text-align:center;font-size:28px;font-weight:bold;color:#e52b2b;letter-spacing:2px}
+h2{text-align:center}
+.subtitle{text-align:center;color:#aaa;margin-bottom:25px}
+label{display:block;margin:15px 0 7px;color:#ddd}
+input{
+  width:100%;padding:13px;background:#242424;
+  border:1px solid #444;border-radius:7px;color:white;
+}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:18px;color:#bbb;font-size:13px}
+.check input{width:auto;margin-top:2px}
+button{
+  width:100%;margin-top:22px;padding:14px;
+  background:#b91f1f;border:0;border-radius:7px;
+  color:white;font-size:16px;font-weight:bold;cursor:pointer;
+}
+button:hover{background:#e12c2c}
+a{color:#e74747;text-decoration:none}
+.footer{text-align:center;margin-top:22px;color:#888;font-size:13px}
+</style>
+</head>
+<body>
+<div class="register">
+  <div class="logo">FEUERWOLF</div>
+  <h2>MITGLIED WERDEN</h2>
+  <p class="subtitle">Eine Community. Ein Zusammenhalt.</p>
+
+  <form id="registerForm">
+    <label for="username">Benutzername</label>
+    <input id="username" type="text" placeholder="Dein Benutzername" required maxlength="30">
+
+    <label for="email">E-Mail-Adresse</label>
+    <input id="email" type="email" placeholder="Deine E-Mail-Adresse" required>
+
+    <label for="password">Passwort</label>
+    <input id="password" type="password" placeholder="Mindestens 12 Zeichen" minlength="12" required>
+
+    <label for="confirm">Passwort wiederholen</label>
+    <input id="confirm" type="password" placeholder="Passwort erneut eingeben" minlength="12" required>
+
+    <label class="check">
+      <input type="checkbox" required>
+      <span>Ich habe die <a href="nutzungsbedingungen.html">Nutzungsbedingungen</a> gelesen.</span>
+    </label>
+
+    <button type="submit">REGISTRIERUNG ABSCHLIESSEN</button>
+  </form>
+
+  <p style="text-align:center">Bereits Mitglied? <a href="login.html">Zum Login</a></p>
+  <div class="footer">FEUERWOLF HOME © 2026</div>
+</div>
+
+<script>
+document.getElementById("registerForm").addEventListener("submit",function(e){
+  e.preventDefault();
+  const password=document.getElementById("password").value;
+  const confirm=document.getElementById("confirm").value;
+
+  if(password!==confirm){
+    alert("Die Passwörter stimmen nicht überein.");
+    return;
+  }
+
+  alert("Die Registrierung ist noch nicht freigeschaltet. Dies ist eine Design-Demo.");
+});
+</script>
+</body>
+</html>
