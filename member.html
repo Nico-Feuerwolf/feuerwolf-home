@@ -22,7 +22,7 @@ button{background:#c81920;color:white;border:0;padding:11px 16px;border-radius:7
 button:hover{background:#ed3038}
 button.secondary{background:#444}
 button.danger{background:#8d171c}
-input,textarea{width:100%;padding:12px;margin:8px 0;background:#292929;color:white;border:1px solid #555;border-radius:7px}
+input,textarea,select{width:100%;padding:12px;margin:8px 0;background:#292929;color:white;border:1px solid #555;border-radius:7px}
 input[type="checkbox"]{width:auto}
 input[type="datetime-local"]{color-scheme:dark}
 textarea{min-height:100px;resize:vertical}
@@ -33,6 +33,7 @@ label{display:block;margin-top:10px;color:#ccc}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .status{color:#aaa;margin:10px 0}
 hr{border:0;border-top:1px solid #444;margin:18px 0}
+.member-role{max-width:350px}
 </style>
 </head>
 
@@ -91,7 +92,8 @@ hr{border:0;border-top:1px solid #444;margin:18px 0}
 </section>
 
 <section id="members" class="panel hidden">
-<h2>Mitgliederverwaltung</h2>
+<h2>Teamverwaltung</h2>
+<p class="muted">Mitglieder anzeigen, suchen und ihre Rollen verwalten.</p>
 <input id="memberSearch" placeholder="Mitglieder suchen..." oninput="filterMembers()">
 <button onclick="loadMembers()">Aktualisieren</button>
 <div id="memberList" class="status">Mitglieder werden geladen...</div>
@@ -146,6 +148,16 @@ const db = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let currentUser = null;
 let isOwner = false;
 let allMembers = [];
+let allRoles = [];
+
+const roleNames = {
+ owner:"Projektinhaber",
+ deputy_owner:"Stellvertretender Projektinhaber",
+ admin:"Administrator",
+ moderator:"Moderator",
+ support:"Support",
+ member:"Mitglied"
+};
 
 function escapeHTML(value){
  return String(value ?? "").replace(/[&<>"']/g,c=>({
@@ -197,15 +209,6 @@ async function start(){
 
   const role = roleData?.role || "member";
   isOwner = role === "owner";
-
-  const roleNames = {
-   owner:"Projektinhaber",
-   deputy_owner:"Stellvertretender Projektinhaber",
-   admin:"Administrator",
-   moderator:"Moderator",
-   support:"Support",
-   member:"Mitglied"
-  };
 
   document.getElementById("role").textContent = roleNames[role] || role;
   document.getElementById("profileRole").textContent = roleNames[role] || role;
@@ -491,35 +494,112 @@ async function deleteEvent(id){
  await loadOwnerLists();
 }
 
+/* TEAMVERWALTUNG */
+
 async function loadMembers(){
  if(!isOwner)return;
 
  const box = document.getElementById("memberList");
+ box.textContent = "Mitglieder und Rollen werden geladen...";
 
- const {data,error} = await db
+ const {data:profiles,error:profileError} = await db
   .from("profiles")
   .select("id,username,created_at")
   .order("created_at",{ascending:false});
 
- if(error){
-  box.textContent = "Fehler beim Laden: "+error.message;
+ if(profileError){
+  box.textContent = "Fehler beim Laden der Mitglieder: "+profileError.message;
   return;
  }
 
- allMembers = data || [];
+ const {data:roles,error:roleError} = await db
+  .from("member_roles")
+  .select("user_id,role");
+
+ if(roleError){
+  box.textContent = "Fehler beim Laden der Rollen: "+roleError.message;
+  return;
+ }
+
+ allRoles = roles || [];
+ allMembers = (profiles || []).map(member=>{
+  const memberRole = allRoles.find(r=>r.user_id===member.id);
+  return {...member,role:memberRole?.role || "member"};
+ });
+
  displayMembers(allMembers);
 }
 
 function displayMembers(list){
  const box = document.getElementById("memberList");
 
- box.innerHTML = list.length ? list.map(m=>`
-  <div class="card">
-   <strong>${escapeHTML(m.username || "Unbekannt")}</strong>
-   <p class="muted">ID: ${escapeHTML(m.id)}</p>
-   <p class="muted">Registriert: ${m.created_at ? new Date(m.created_at).toLocaleDateString("de-DE") : "Unbekannt"}</p>
-  </div>
- `).join("") : "Keine Mitglieder gefunden.";
+ if(!list.length){
+  box.textContent = "Keine Mitglieder gefunden.";
+  return;
+ }
+
+ box.innerHTML = list.map(m=>{
+  const isSelf = m.id === currentUser.id;
+  const isTargetOwner = m.role === "owner";
+
+  return `
+   <div class="card">
+    <strong>${escapeHTML(m.username || "Unbekannt")}</strong>
+    <p class="muted">Registriert: ${m.created_at ? new Date(m.created_at).toLocaleDateString("de-DE") : "Unbekannt"}</p>
+    <p>Aktuelle Rolle: <strong>${escapeHTML(roleNames[m.role] || m.role)}</strong></p>
+    ${isTargetOwner ? '<p class="muted">Projektinhaber – geschützt</p>' : `
+     <label>Neue Rolle</label>
+     <select class="member-role" id="role-${escapeHTML(m.id)}" ${isSelf ? "disabled" : ""}>
+      <option value="member" ${m.role==="member"?"selected":""}>Mitglied</option>
+      <option value="support" ${m.role==="support"?"selected":""}>Support</option>
+      <option value="moderator" ${m.role==="moderator"?"selected":""}>Moderator</option>
+      <option value="admin" ${m.role==="admin"?"selected":""}>Administrator</option>
+      <option value="deputy_owner" ${m.role==="deputy_owner"?"selected":""}>Stellvertretender Projektinhaber</option>
+     </select>
+     <button onclick="changeMemberRole('${escapeHTML(m.id)}')" ${isSelf?"disabled":""}>Rolle speichern</button>
+    `}
+   </div>
+  `;
+ }).join("");
+}
+
+async function changeMemberRole(userId){
+ if(!isOwner || !currentUser){
+  setStatus("Keine Berechtigung.");
+  return;
+ }
+
+ if(userId === currentUser.id){
+  setStatus("Du kannst deine eigene Rolle hier nicht ändern.");
+  return;
+ }
+
+ const select = document.getElementById("role-"+userId);
+ if(!select)return;
+
+ const newRole = select.value;
+
+ if(!Object.prototype.hasOwnProperty.call(roleNames,newRole) || newRole==="owner"){
+  setStatus("Diese Rolle ist nicht erlaubt.");
+  return;
+ }
+
+ if(!confirm("Rolle wirklich auf '"+roleNames[newRole]+"' ändern?"))return;
+
+ setStatus("Rolle wird gespeichert...");
+
+ const {error} = await db.rpc("set_member_role",{
+  target_user_id:userId,
+  new_role:newRole
+ });
+
+ if(error){
+  setStatus("Fehler beim Ändern der Rolle: "+error.message);
+  return;
+ }
+
+ setStatus("Rolle erfolgreich geändert.");
+ await loadMembers();
 }
 
 function filterMembers(){
