@@ -1,142 +1,494 @@
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FEUERWOLF HOME – Inhaberzentrum</title>
+<title>FEUERWOLF HOME – Member Center</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#101010;color:white;font-family:Arial,sans-serif}
-header{background:#190909;padding:22px;border-bottom:2px solid #d71920}
-header h1{margin:0;color:#ff3038}
-main{max-width:1100px;margin:30px auto;padding:20px}
-.panel{background:#1c1c1c;border:1px solid #383838;border-radius:12px;padding:22px;margin-bottom:20px}
-h2{color:#ff4249}
-input{width:100%;padding:13px;background:#292929;color:white;border:1px solid #555;border-radius:7px;margin:10px 0}
-button{background:#c81920;color:white;border:0;padding:12px 18px;border-radius:7px;cursor:pointer;margin:5px}
-button:hover{background:#ed252d}
-.member{padding:14px;background:#292929;border-radius:7px;margin:9px 0}
+body{margin:0;background:#111;color:#eee;font-family:Arial,sans-serif}
+header{background:#1a1a1a;border-bottom:2px solid #d71920;padding:22px}
+header h1{color:#e32630;margin:0}
+header p{color:#aaa;margin-bottom:0}
+main{max-width:1200px;margin:25px auto;padding:15px}
+.panel{background:#1c1c1c;border:1px solid #383838;border-radius:12px;padding:20px;margin-bottom:20px}
+h2{color:#ed343c;margin-top:0}
+h3{color:#eee}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}
+button{background:#c81920;color:white;border:0;padding:11px 16px;border-radius:7px;cursor:pointer;margin:3px}
+button:hover{background:#ed3038}
+button.secondary{background:#444}
+button.danger{background:#8d171c}
+input,textarea{width:100%;padding:12px;margin:8px 0;background:#292929;color:white;border:1px solid #555;border-radius:7px}
+textarea{min-height:100px;resize:vertical}
+label{display:block;margin-top:10px;color:#ccc}
+.card{background:#292929;border:1px solid #444;padding:15px;border-radius:9px;margin:10px 0}
 .muted{color:#aaa}
-.hidden{display:none}
+.hidden{display:none!important}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.status{color:#aaa;margin:10px 0}
+hr{border:0;border-top:1px solid #444;margin:18px 0}
 </style>
 </head>
 <body>
+
 <header>
 <h1>FEUERWOLF HOME</h1>
-<p>Inhaberzentrum · Mitgliederverwaltung</p>
+<p>Eine Community. Ein Zusammenhalt.</p>
 </header>
 
 <main>
-<section class="panel">
-<h2>Mitgliederverwaltung</h2>
-<p class="muted">Mitglieder suchen und vorhandene Profile anzeigen.</p>
-<input id="search" placeholder="Mitglied suchen..." oninput="filterMembers()">
-<button onclick="loadMembers()">Aktualisieren</button>
-<div id="status">Lade Mitglieder...</div>
-<div id="members"></div>
+<div class="panel">
+<h2>Willkommen im Member Center</h2>
+<p>Angemeldet als: <strong id="username">Lädt...</strong></p>
+<p>Deine Rolle: <strong id="role">Lädt...</strong></p>
+<button onclick="logout()">Abmelden</button>
+</div>
+
+<nav>
+<button onclick="showSection('dashboard')">Dashboard</button>
+<button onclick="showSection('news')">Neuigkeiten</button>
+<button onclick="showSection('events')">Events</button>
+<button id="membersNav" class="hidden" onclick="showSection('members')">Mitglieder</button>
+<button id="ownerNav" class="hidden" onclick="showSection('owner')">Inhaberzentrum</button>
+</nav>
+
+<section id="dashboard" class="panel">
+<h2>Community-Dashboard</h2>
+<p>Willkommen bei FEUERWOLF HOME!</p>
+<div class="grid">
+<div class="card">
+<h3>Community</h3>
+<p class="muted">Hier findest du Neuigkeiten und Informationen aus unserer Community.</p>
+<button onclick="showSection('news')">Neuigkeiten ansehen</button>
+</div>
+<div class="card">
+<h3>Events</h3>
+<p class="muted">Entdecke kommende Veranstaltungen.</p>
+<button onclick="showSection('events')">Events ansehen</button>
+</div>
+<div class="card">
+<h3>Dein Profil</h3>
+<p>Benutzername: <strong id="profileName">-</strong></p>
+<p>Rolle: <strong id="profileRole">-</strong></p>
+</div>
+</div>
 </section>
 
-<section class="panel">
-<h2>Inhaberzentrum</h2>
-<p>Angemeldet als: <span id="username">Lade...</span></p>
-<p>Rolle: <strong id="role">Lade...</strong></p>
-<button onclick="logout()">Abmelden</button>
+<section id="news" class="panel hidden">
+<h2>Community-Neuigkeiten</h2>
+<div id="newsList" class="status">Neuigkeiten werden geladen...</div>
 </section>
+
+<section id="events" class="panel hidden">
+<h2>Community-Events</h2>
+<div id="eventList" class="status">Events werden geladen...</div>
+</section>
+
+<section id="members" class="panel hidden">
+<h2>Mitgliederverwaltung</h2>
+<input id="memberSearch" placeholder="Mitglieder suchen..." oninput="filterMembers()">
+<button onclick="loadMembers()">Aktualisieren</button>
+<div id="memberList" class="status">Mitglieder werden geladen...</div>
+</section>
+
+<section id="owner" class="panel hidden">
+<h2>Inhaberzentrum</h2>
+<p class="muted">Du hast als Projektinhaber Zugriff auf alle Bereiche.</p>
+
+<div class="grid">
+<div class="card">
+<h3>Neuigkeit erstellen</h3>
+<label>Titel</label>
+<input id="newsTitle" placeholder="Titel der Neuigkeit">
+<label>Inhalt</label>
+<textarea id="newsContent" placeholder="Schreibe deine Neuigkeit..."></textarea>
+<label><input type="checkbox" id="newsPublished" style="width:auto"> Sofort veröffentlichen</label>
+<button onclick="createNews()">Neuigkeit speichern</button>
+</div>
+
+<div class="card">
+<h3>Event erstellen</h3>
+<label>Eventtitel</label>
+<input id="eventTitle" placeholder="Name des Events">
+<label>Beschreibung</label>
+<textarea id="eventDescription" placeholder="Beschreibung..."></textarea>
+<label>Datum und Uhrzeit</label>
+<input type="datetime-local" id="eventDate">
+<label>Ort</label>
+<input id="eventLocation" placeholder="Ort oder Discord">
+<label><input type="checkbox" id="eventPublished" style="width:auto"> Sofort veröffentlichen</label>
+<button onclick="createEvent()">Event speichern</button>
+</div>
+</div>
+
+<hr>
+<h3>Verwaltung</h3>
+<p class="muted">Hier kannst du veröffentlichte und unveröffentlichte Beiträge verwalten.</p>
+<div id="ownerNewsList"></div>
+<div id="ownerEventList"></div>
+</section>
+
+<div id="globalStatus" class="status"></div>
 </main>
 
 <script>
+// HIER DIE BISHERIGEN SUPABASE-WERTE EINTRAGEN
 const SUPABASE_URL = "https://oiwtnewzawkerwteatae.supabase.co";
 const SUPABASE_KEY = "sb_publishable_17z6ME3aWaJ4ARzcjDAIhg_mVNQTsZN";
 
 const db = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let currentUser = null;
+let isOwner = false;
 let allMembers = [];
 
+function escapeHTML(value){
+ return String(value ?? "").replace(/[&<>"']/g,c=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ })[c]);
+}
+
+function setStatus(message){
+ document.getElementById("globalStatus").textContent = message;
+}
+
+function showSection(id){
+ document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
+ document.getElementById(id).classList.remove("hidden");
+}
+
 async function start(){
-  const {data:{session}} = await db.auth.getSession();
+ const {data:{session},error} = await db.auth.getSession();
 
-  if(!session){
-    location.href="login.html";
-    return;
-  }
+ if(error || !session){
+  location.href="login.html";
+  return;
+ }
 
-  const {data:profile} = await db
-    .from("profiles")
-    .select("username")
-    .eq("id",session.user.id)
-    .single();
+ currentUser = session.user;
 
-  document.getElementById("username").textContent =
-    profile?.username || session.user.email;
+ const {data:profile} = await db
+  .from("profiles")
+  .select("username")
+  .eq("id",currentUser.id)
+  .maybeSingle();
 
-  const {data:roleData,error:roleError} = await db
-    .from("member_roles")
-    .select("role")
-    .eq("user_id",session.user.id)
-    .single();
+ const name = profile?.username || currentUser.email || "Mitglied";
 
-  if(roleError || roleData?.role !== "owner"){
-    document.getElementById("status").textContent =
-      "Kein Zugriff auf die Mitgliederverwaltung.";
-    return;
-  }
+ document.getElementById("username").textContent = name;
+ document.getElementById("profileName").textContent = name;
 
-  document.getElementById("role").textContent = "Projektinhaber";
-  loadMembers();
+ const {data:roleData,error:roleError} = await db
+  .from("member_roles")
+  .select("role")
+  .eq("user_id",currentUser.id)
+  .maybeSingle();
+
+ if(roleError){
+  setStatus("Rolle konnte nicht geladen werden: "+roleError.message);
+  return;
+ }
+
+ const role = roleData?.role || "member";
+ isOwner = role === "owner";
+
+ const roleNames = {
+  owner:"Projektinhaber",
+  deputy_owner:"Stellvertretender Projektinhaber",
+  admin:"Administrator",
+  moderator:"Moderator",
+  support:"Support",
+  member:"Mitglied"
+ };
+
+ document.getElementById("role").textContent = roleNames[role] || role;
+ document.getElementById("profileRole").textContent = roleNames[role] || role;
+
+ if(isOwner){
+  document.getElementById("membersNav").classList.remove("hidden");
+  document.getElementById("ownerNav").classList.remove("hidden");
+ }
+
+ await loadNews();
+ await loadEvents();
+
+ if(isOwner){
+  await loadMembers();
+  await loadOwnerLists();
+ }
+
+ showSection("dashboard");
+}
+
+async function loadNews(){
+ const {data,error} = await db
+  .from("community_news")
+  .select("*")
+  .eq("published",true)
+  .order("created_at",{ascending:false});
+
+ const box = document.getElementById("newsList");
+
+ if(error){
+  box.textContent = "Fehler beim Laden: "+error.message;
+  return;
+ }
+
+ if(!data || !data.length){
+  box.textContent = "Noch keine veröffentlichten Neuigkeiten.";
+  return;
+ }
+
+ box.innerHTML = data.map(n=>`
+  <div class="card">
+   <h3>${escapeHTML(n.title)}</h3>
+   <p>${escapeHTML(n.content)}</p>
+   <small class="muted">${new Date(n.created_at).toLocaleString("de-DE")}</small>
+  </div>
+ `).join("");
+}
+
+async function loadEvents(){
+ const {data,error} = await db
+  .from("community_events")
+  .select("*")
+  .eq("published",true)
+  .order("event_date",{ascending:true});
+
+ const box = document.getElementById("eventList");
+
+ if(error){
+  box.textContent = "Fehler beim Laden: "+error.message;
+  return;
+ }
+
+ if(!data || !data.length){
+  box.textContent = "Noch keine veröffentlichten Events.";
+  return;
+ }
+
+ box.innerHTML = data.map(e=>`
+  <div class="card">
+   <h3>${escapeHTML(e.title)}</h3>
+   <p>${escapeHTML(e.description || "")}</p>
+   <p><strong>Datum:</strong> ${new Date(e.event_date).toLocaleString("de-DE")}</p>
+   <p><strong>Ort:</strong> ${escapeHTML(e.location || "Noch nicht festgelegt")}</p>
+  </div>
+ `).join("");
+}
+
+async function createNews(){
+ if(!isOwner)return;
+
+ const title = document.getElementById("newsTitle").value.trim();
+ const content = document.getElementById("newsContent").value.trim();
+ const published = document.getElementById("newsPublished").checked;
+
+ if(!title || !content){
+  setStatus("Bitte Titel und Inhalt eingeben.");
+  return;
+ }
+
+ const {error} = await db.from("community_news").insert({
+  title,content,published,created_by:currentUser.id
+ });
+
+ if(error){
+  setStatus("Fehler: "+error.message);
+  return;
+ }
+
+ document.getElementById("newsTitle").value="";
+ document.getElementById("newsContent").value="";
+ document.getElementById("newsPublished").checked=false;
+
+ setStatus("Neuigkeit wurde gespeichert.");
+ await loadNews();
+ await loadOwnerLists();
+}
+
+async function createEvent(){
+ if(!isOwner)return;
+
+ const title = document.getElementById("eventTitle").value.trim();
+ const description = document.getElementById("eventDescription").value.trim();
+ const date = document.getElementById("eventDate").value;
+ const locationName = document.getElementById("eventLocation").value.trim();
+ const published = document.getElementById("eventPublished").checked;
+
+ if(!title || !date){
+  setStatus("Bitte Eventtitel und Datum eingeben.");
+  return;
+ }
+
+ const {error} = await db.from("community_events").insert({
+  title,
+  description,
+  event_date:new Date(date).toISOString(),
+  location:locationName,
+  published,
+  created_by:currentUser.id
+ });
+
+ if(error){
+  setStatus("Fehler: "+error.message);
+  return;
+ }
+
+ document.getElementById("eventTitle").value="";
+ document.getElementById("eventDescription").value="";
+ document.getElementById("eventDate").value="";
+ document.getElementById("eventLocation").value="";
+ document.getElementById("eventPublished").checked=false;
+
+ setStatus("Event wurde gespeichert.");
+ await loadEvents();
+ await loadOwnerLists();
+}
+
+async function loadOwnerLists(){
+ if(!isOwner)return;
+
+ const newsBox = document.getElementById("ownerNewsList");
+ const eventBox = document.getElementById("ownerEventList");
+
+ const {data:news,error:newsError} = await db
+  .from("community_news")
+  .select("*")
+  .order("created_at",{ascending:false});
+
+ if(newsError){
+  newsBox.textContent = "Neuigkeiten: "+newsError.message;
+ }else{
+  newsBox.innerHTML = "<h3>Alle Neuigkeiten</h3>"+(news || []).map(n=>`
+   <div class="card">
+    <strong>${escapeHTML(n.title)}</strong>
+    <p class="muted">${n.published?"Veröffentlicht":"Entwurf"}</p>
+    <button onclick="editNews(${n.id})">Bearbeiten</button>
+    <button class="danger" onclick="deleteNews(${n.id})">Löschen</button>
+   </div>
+  `).join("");
+ }
+
+ const {data:events,error:eventError} = await db
+  .from("community_events")
+  .select("*")
+  .order("event_date",{ascending:true});
+
+ if(eventError){
+  eventBox.textContent = "Events: "+eventError.message;
+ }else{
+  eventBox.innerHTML = "<h3>Alle Events</h3>"+(events || []).map(e=>`
+   <div class="card">
+    <strong>${escapeHTML(e.title)}</strong>
+    <p class="muted">${e.published?"Veröffentlicht":"Entwurf"}</p>
+    <button onclick="editEvent(${e.id})">Bearbeiten</button>
+    <button class="danger" onclick="deleteEvent(${e.id})">Löschen</button>
+   </div>
+  `).join("");
+ }
+}
+
+async function editNews(id){
+ if(!isOwner)return;
+ const {data:n,error} = await db.from("community_news").select("*").eq("id",id).single();
+ if(error){setStatus(error.message);return;}
+
+ const title = prompt("Titel:",n.title);
+ if(title === null)return;
+ const content = prompt("Inhalt:",n.content);
+ if(content === null)return;
+ const published = confirm("OK = veröffentlichen, Abbrechen = Entwurf");
+
+ const {error:updateError} = await db.from("community_news")
+  .update({title,content,published})
+  .eq("id",id);
+
+ setStatus(updateError ? updateError.message : "Neuigkeit aktualisiert.");
+ await loadNews();
+ await loadOwnerLists();
+}
+
+async function editEvent(id){
+ if(!isOwner)return;
+ const {data:e,error} = await db.from("community_events").select("*").eq("id",id).single();
+ if(error){setStatus(error.message);return;}
+
+ const title = prompt("Eventtitel:",e.title);
+ if(title === null)return;
+ const description = prompt("Beschreibung:",e.description || "");
+ if(description === null)return;
+ const locationName = prompt("Ort:",e.location || "");
+ if(locationName === null)return;
+ const published = confirm("OK = veröffentlichen, Abbrechen = Entwurf");
+
+ const {error:updateError} = await db.from("community_events")
+  .update({title,description,location:locationName,published})
+  .eq("id",id);
+
+ setStatus(updateError ? updateError.message : "Event aktualisiert.");
+ await loadEvents();
+ await loadOwnerLists();
+}
+
+async function deleteNews(id){
+ if(!isOwner || !confirm("Diese Neuigkeit wirklich löschen?"))return;
+ const {error} = await db.from("community_news").delete().eq("id",id);
+ setStatus(error ? error.message : "Neuigkeit gelöscht.");
+ await loadNews();
+ await loadOwnerLists();
+}
+
+async function deleteEvent(id){
+ if(!isOwner || !confirm("Dieses Event wirklich löschen?"))return;
+ const {error} = await db.from("community_events").delete().eq("id",id);
+ setStatus(error ? error.message : "Event gelöscht.");
+ await loadEvents();
+ await loadOwnerLists();
 }
 
 async function loadMembers(){
-  document.getElementById("status").textContent = "Mitglieder werden geladen...";
+ if(!isOwner)return;
 
-  const {data,error} = await db
-    .from("profiles")
-    .select("id,username,created_at")
-    .order("created_at",{ascending:false});
+ const box = document.getElementById("memberList");
+ const {data,error} = await db
+  .from("profiles")
+  .select("id,username,created_at")
+  .order("created_at",{ascending:false});
 
-  if(error){
-    document.getElementById("status").textContent =
-      "Fehler beim Laden: " + error.message;
-    return;
-  }
+ if(error){
+  box.textContent = "Fehler beim Laden: "+error.message;
+  return;
+ }
 
-  allMembers = data || [];
-  showMembers(allMembers);
+ allMembers = data || [];
+ displayMembers(allMembers);
 }
 
-function showMembers(list){
-  document.getElementById("status").textContent =
-    list.length + " Mitglieder gefunden.";
-
-  document.getElementById("members").innerHTML =
-    list.map(member => `
-      <div class="member">
-        <strong>${escapeHTML(member.username || "Unbekannt")}</strong>
-        <p class="muted">Registriert: ${
-          member.created_at
-            ? new Date(member.created_at).toLocaleDateString("de-DE")
-            : "Unbekannt"
-        }</p>
-      </div>
-    `).join("");
+function displayMembers(list){
+ const box = document.getElementById("memberList");
+ box.innerHTML = list.length ? list.map(m=>`
+  <div class="card">
+   <strong>${escapeHTML(m.username || "Unbekannt")}</strong>
+   <p class="muted">ID: ${escapeHTML(m.id)}</p>
+   <p class="muted">Registriert: ${m.created_at ? new Date(m.created_at).toLocaleDateString("de-DE") : "Unbekannt"}</p>
+  </div>
+ `).join("") : "Keine Mitglieder gefunden.";
 }
 
 function filterMembers(){
-  const term = document.getElementById("search").value.toLowerCase();
-
-  showMembers(allMembers.filter(member =>
-    (member.username || "").toLowerCase().includes(term)
-  ));
-}
-
-function escapeHTML(value){
-  return String(value).replace(/[&<>"']/g,char => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  })[char]);
+ const term = document.getElementById("memberSearch").value.toLowerCase();
+ displayMembers(allMembers.filter(m=>
+  (m.username || "").toLowerCase().includes(term)
+ ));
 }
 
 async function logout(){
-  await db.auth.signOut();
-  location.href="login.html";
+ await db.auth.signOut();
+ location.href="login.html";
 }
 
 start();
