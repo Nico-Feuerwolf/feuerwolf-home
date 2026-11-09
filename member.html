@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FEUERWOLF HOME – Member Center</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#111;color:#eee;font-family:Arial,sans-serif}
@@ -22,6 +23,8 @@ button:hover{background:#ed3038}
 button.secondary{background:#444}
 button.danger{background:#8d171c}
 input,textarea{width:100%;padding:12px;margin:8px 0;background:#292929;color:white;border:1px solid #555;border-radius:7px}
+input[type="checkbox"]{width:auto}
+input[type="datetime-local"]{color-scheme:dark}
 textarea{min-height:100px;resize:vertical}
 label{display:block;margin-top:10px;color:#ccc}
 .card{background:#292929;border:1px solid #444;padding:15px;border-radius:9px;margin:10px 0}
@@ -32,8 +35,8 @@ label{display:block;margin-top:10px;color:#ccc}
 hr{border:0;border-top:1px solid #444;margin:18px 0}
 </style>
 </head>
-<body>
 
+<body>
 <header>
 <h1>FEUERWOLF HOME</h1>
 <p>Eine Community. Ein Zusammenhalt.</p>
@@ -105,7 +108,7 @@ hr{border:0;border-top:1px solid #444;margin:18px 0}
 <input id="newsTitle" placeholder="Titel der Neuigkeit">
 <label>Inhalt</label>
 <textarea id="newsContent" placeholder="Schreibe deine Neuigkeit..."></textarea>
-<label><input type="checkbox" id="newsPublished" style="width:auto"> Sofort veröffentlichen</label>
+<label><input type="checkbox" id="newsPublished"> Sofort veröffentlichen</label>
 <button onclick="createNews()">Neuigkeit speichern</button>
 </div>
 
@@ -119,8 +122,8 @@ hr{border:0;border-top:1px solid #444;margin:18px 0}
 <input type="datetime-local" id="eventDate">
 <label>Ort</label>
 <input id="eventLocation" placeholder="Ort oder Discord">
-<label><input type="checkbox" id="eventPublished" style="width:auto"> Sofort veröffentlichen</label>
-<button onclick="createEvent()">Event speichern</button>
+<label><input type="checkbox" id="eventPublished"> Sofort veröffentlichen</label>
+<button onclick="saveCommunityEvent()">Event speichern</button>
 </div>
 </div>
 
@@ -135,7 +138,6 @@ hr{border:0;border-top:1px solid #444;margin:18px 0}
 </main>
 
 <script>
-// HIER DIE BISHERIGEN SUPABASE-WERTE EINTRAGEN
 const SUPABASE_URL = "https://oiwtnewzawkerwteatae.supabase.co";
 const SUPABASE_KEY = "sb_publishable_17z6ME3aWaJ4ARzcjDAIhg_mVNQTsZN";
 
@@ -161,66 +163,70 @@ function showSection(id){
 }
 
 async function start(){
- const {data:{session},error} = await db.auth.getSession();
+ try{
+  const {data:{session},error} = await db.auth.getSession();
 
- if(error || !session){
-  location.href="login.html";
-  return;
+  if(error || !session){
+   location.href="login.html";
+   return;
+  }
+
+  currentUser = session.user;
+
+  const {data:profile} = await db
+   .from("profiles")
+   .select("username")
+   .eq("id",currentUser.id)
+   .maybeSingle();
+
+  const name = profile?.username || currentUser.email || "Mitglied";
+
+  document.getElementById("username").textContent = name;
+  document.getElementById("profileName").textContent = name;
+
+  const {data:roleData,error:roleError} = await db
+   .from("member_roles")
+   .select("role")
+   .eq("user_id",currentUser.id)
+   .maybeSingle();
+
+  if(roleError){
+   setStatus("Rolle konnte nicht geladen werden: "+roleError.message);
+   return;
+  }
+
+  const role = roleData?.role || "member";
+  isOwner = role === "owner";
+
+  const roleNames = {
+   owner:"Projektinhaber",
+   deputy_owner:"Stellvertretender Projektinhaber",
+   admin:"Administrator",
+   moderator:"Moderator",
+   support:"Support",
+   member:"Mitglied"
+  };
+
+  document.getElementById("role").textContent = roleNames[role] || role;
+  document.getElementById("profileRole").textContent = roleNames[role] || role;
+
+  if(isOwner){
+   document.getElementById("membersNav").classList.remove("hidden");
+   document.getElementById("ownerNav").classList.remove("hidden");
+  }
+
+  await loadNews();
+  await loadEvents();
+
+  if(isOwner){
+   await loadMembers();
+   await loadOwnerLists();
+  }
+
+  showSection("dashboard");
+ }catch(error){
+  setStatus("Fehler beim Start: "+error.message);
  }
-
- currentUser = session.user;
-
- const {data:profile} = await db
-  .from("profiles")
-  .select("username")
-  .eq("id",currentUser.id)
-  .maybeSingle();
-
- const name = profile?.username || currentUser.email || "Mitglied";
-
- document.getElementById("username").textContent = name;
- document.getElementById("profileName").textContent = name;
-
- const {data:roleData,error:roleError} = await db
-  .from("member_roles")
-  .select("role")
-  .eq("user_id",currentUser.id)
-  .maybeSingle();
-
- if(roleError){
-  setStatus("Rolle konnte nicht geladen werden: "+roleError.message);
-  return;
- }
-
- const role = roleData?.role || "member";
- isOwner = role === "owner";
-
- const roleNames = {
-  owner:"Projektinhaber",
-  deputy_owner:"Stellvertretender Projektinhaber",
-  admin:"Administrator",
-  moderator:"Moderator",
-  support:"Support",
-  member:"Mitglied"
- };
-
- document.getElementById("role").textContent = roleNames[role] || role;
- document.getElementById("profileRole").textContent = roleNames[role] || role;
-
- if(isOwner){
-  document.getElementById("membersNav").classList.remove("hidden");
-  document.getElementById("ownerNav").classList.remove("hidden");
- }
-
- await loadNews();
- await loadEvents();
-
- if(isOwner){
-  await loadMembers();
-  await loadOwnerLists();
- }
-
- showSection("dashboard");
 }
 
 async function loadNews(){
@@ -281,7 +287,7 @@ async function loadEvents(){
 }
 
 async function createNews(){
- if(!isOwner)return;
+ if(!isOwner || !currentUser)return;
 
  const title = document.getElementById("newsTitle").value.trim();
  const content = document.getElementById("newsContent").value.trim();
@@ -291,6 +297,8 @@ async function createNews(){
   setStatus("Bitte Titel und Inhalt eingeben.");
   return;
  }
+
+ setStatus("Neuigkeit wird gespeichert...");
 
  const {error} = await db.from("community_news").insert({
   title,content,published,created_by:currentUser.id
@@ -310,8 +318,11 @@ async function createNews(){
  await loadOwnerLists();
 }
 
-async function createEvent(){
- if(!isOwner)return;
+async function saveCommunityEvent(){
+ if(!isOwner || !currentUser){
+  setStatus("Keine Berechtigung.");
+  return;
+ }
 
  const title = document.getElementById("eventTitle").value.trim();
  const description = document.getElementById("eventDescription").value.trim();
@@ -324,29 +335,44 @@ async function createEvent(){
   return;
  }
 
- const {error} = await db.from("community_events").insert({
-  title,
-  description,
-  event_date:new Date(date).toISOString(),
-  location:locationName,
-  published,
-  created_by:currentUser.id
- });
+ const parsedDate = new Date(date);
 
- if(error){
-  setStatus("Fehler: "+error.message);
+ if(isNaN(parsedDate.getTime())){
+  setStatus("Das Datum ist ungültig.");
   return;
  }
 
- document.getElementById("eventTitle").value="";
- document.getElementById("eventDescription").value="";
- document.getElementById("eventDate").value="";
- document.getElementById("eventLocation").value="";
- document.getElementById("eventPublished").checked=false;
+ setStatus("Event wird gespeichert...");
 
- setStatus("Event wurde gespeichert.");
- await loadEvents();
- await loadOwnerLists();
+ try{
+  const {error} = await db.from("community_events").insert({
+   title:title,
+   description:description,
+   event_date:parsedDate.toISOString(),
+   location:locationName,
+   published:published,
+   created_by:currentUser.id
+  });
+
+  if(error){
+   setStatus("Fehler beim Speichern: "+error.message);
+   return;
+  }
+
+  document.getElementById("eventTitle").value="";
+  document.getElementById("eventDescription").value="";
+  document.getElementById("eventDate").value="";
+  document.getElementById("eventLocation").value="";
+  document.getElementById("eventPublished").checked=false;
+
+  setStatus("Event wurde erfolgreich gespeichert!");
+
+  await loadEvents();
+  await loadOwnerLists();
+
+ }catch(error){
+  setStatus("Unerwarteter Fehler: "+error.message);
+ }
 }
 
 async function loadOwnerLists(){
@@ -394,13 +420,18 @@ async function loadOwnerLists(){
 
 async function editNews(id){
  if(!isOwner)return;
- const {data:n,error} = await db.from("community_news").select("*").eq("id",id).single();
+
+ const {data:n,error} = await db
+  .from("community_news").select("*").eq("id",id).single();
+
  if(error){setStatus(error.message);return;}
 
  const title = prompt("Titel:",n.title);
  if(title === null)return;
+
  const content = prompt("Inhalt:",n.content);
  if(content === null)return;
+
  const published = confirm("OK = veröffentlichen, Abbrechen = Entwurf");
 
  const {error:updateError} = await db.from("community_news")
@@ -414,15 +445,21 @@ async function editNews(id){
 
 async function editEvent(id){
  if(!isOwner)return;
- const {data:e,error} = await db.from("community_events").select("*").eq("id",id).single();
+
+ const {data:e,error} = await db
+  .from("community_events").select("*").eq("id",id).single();
+
  if(error){setStatus(error.message);return;}
 
  const title = prompt("Eventtitel:",e.title);
  if(title === null)return;
+
  const description = prompt("Beschreibung:",e.description || "");
  if(description === null)return;
+
  const locationName = prompt("Ort:",e.location || "");
  if(locationName === null)return;
+
  const published = confirm("OK = veröffentlichen, Abbrechen = Entwurf");
 
  const {error:updateError} = await db.from("community_events")
@@ -436,7 +473,9 @@ async function editEvent(id){
 
 async function deleteNews(id){
  if(!isOwner || !confirm("Diese Neuigkeit wirklich löschen?"))return;
+
  const {error} = await db.from("community_news").delete().eq("id",id);
+
  setStatus(error ? error.message : "Neuigkeit gelöscht.");
  await loadNews();
  await loadOwnerLists();
@@ -444,7 +483,9 @@ async function deleteNews(id){
 
 async function deleteEvent(id){
  if(!isOwner || !confirm("Dieses Event wirklich löschen?"))return;
+
  const {error} = await db.from("community_events").delete().eq("id",id);
+
  setStatus(error ? error.message : "Event gelöscht.");
  await loadEvents();
  await loadOwnerLists();
@@ -454,6 +495,7 @@ async function loadMembers(){
  if(!isOwner)return;
 
  const box = document.getElementById("memberList");
+
  const {data,error} = await db
   .from("profiles")
   .select("id,username,created_at")
@@ -470,6 +512,7 @@ async function loadMembers(){
 
 function displayMembers(list){
  const box = document.getElementById("memberList");
+
  box.innerHTML = list.length ? list.map(m=>`
   <div class="card">
    <strong>${escapeHTML(m.username || "Unbekannt")}</strong>
@@ -481,6 +524,7 @@ function displayMembers(list){
 
 function filterMembers(){
  const term = document.getElementById("memberSearch").value.toLowerCase();
+
  displayMembers(allMembers.filter(m=>
   (m.username || "").toLowerCase().includes(term)
  ));
