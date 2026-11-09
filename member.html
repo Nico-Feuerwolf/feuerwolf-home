@@ -1,118 +1,145 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FEUERWOLF HOME – Member Center</title>
+<title>FEUERWOLF HOME – Inhaberzentrum</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#101010;color:#fff;font-family:Arial,sans-serif}
-header{background:#1b1b1b;padding:20px 30px;border-bottom:2px solid #e32636;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
-h1{color:#e32636;margin:0;font-size:23px}
-button{background:#e32636;color:white;border:0;padding:12px 17px;border-radius:6px;cursor:pointer;font-weight:bold}
-main{max-width:1150px;margin:30px auto;padding:20px}
-.welcome,.card{background:#1b1b1b;padding:22px;border:1px solid #333;border-radius:10px}
-h2,h3{color:#e32636}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:20px}
-.card p{color:#bbb}
-.owner{margin-top:30px;border:1px solid #e32636;border-radius:12px;padding:22px;background:#191313}
-.owner-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
-.owner-card{background:#24191b;padding:18px;border:1px solid #633039;border-radius:8px}
-.owner-card h3{margin-top:0}
-#status{color:#aaa;text-align:center;margin-top:25px}
+body{margin:0;background:#101010;color:white;font-family:Arial,sans-serif}
+header{background:#190909;padding:22px;border-bottom:2px solid #d71920}
+header h1{margin:0;color:#ff3038}
+main{max-width:1100px;margin:30px auto;padding:20px}
+.panel{background:#1c1c1c;border:1px solid #383838;border-radius:12px;padding:22px;margin-bottom:20px}
+h2{color:#ff4249}
+input{width:100%;padding:13px;background:#292929;color:white;border:1px solid #555;border-radius:7px;margin:10px 0}
+button{background:#c81920;color:white;border:0;padding:12px 18px;border-radius:7px;cursor:pointer;margin:5px}
+button:hover{background:#ed252d}
+.member{padding:14px;background:#292929;border-radius:7px;margin:9px 0}
+.muted{color:#aaa}
 .hidden{display:none}
 </style>
 </head>
 <body>
 <header>
 <h1>FEUERWOLF HOME</h1>
-<button id="logoutButton">Abmelden</button>
+<p>Inhaberzentrum · Mitgliederverwaltung</p>
 </header>
 
 <main>
-<section class="welcome">
-<h2>Member Center</h2>
-<p>Willkommen, <strong id="username">Mitglied</strong>!</p>
-<p>Deine Community. Dein Team. Dein Zuhause.</p>
-<p>Deine Rolle: <strong id="role">Wird geladen...</strong></p>
+<section class="panel">
+<h2>Mitgliederverwaltung</h2>
+<p class="muted">Mitglieder suchen und vorhandene Profile anzeigen.</p>
+<input id="search" placeholder="Mitglied suchen..." oninput="filterMembers()">
+<button onclick="loadMembers()">Aktualisieren</button>
+<div id="status">Lade Mitglieder...</div>
+<div id="members"></div>
 </section>
 
-<section class="grid">
-<div class="card"><h3>Mein Profil</h3><p>Deine Mitgliederdaten und dein Profil.</p></div>
-<div class="card"><h3>Meine Aufgaben</h3><p>Hier findest du deine Aufgaben.</p></div>
-<div class="card"><h3>Termine</h3><p>Alle wichtigen Community-Termine.</p></div>
-<div class="card"><h3>Nachrichten</h3><p>Deine Community-Nachrichten.</p></div>
-<div class="card"><h3>Tickets</h3><p>Support und Hilfe für Mitglieder.</p></div>
-<div class="card"><h3>Teamübersicht</h3><p>Die Übersicht unseres Teams.</p></div>
+<section class="panel">
+<h2>Inhaberzentrum</h2>
+<p>Angemeldet als: <span id="username">Lade...</span></p>
+<p>Rolle: <strong id="role">Lade...</strong></p>
+<button onclick="logout()">Abmelden</button>
 </section>
-
-<section id="ownerArea" class="owner hidden">
-<h2>🐺 Inhaberzentrum</h2>
-<p>Willkommen im Verwaltungsbereich von FEUERWOLF HOME.</p>
-<div class="owner-grid">
-<div class="owner-card"><h3>Mitgliederverwaltung</h3><p>Mitglieder und Konten verwalten.</p></div>
-<div class="owner-card"><h3>Rollenverwaltung</h3><p>Rollen und Berechtigungen verwalten.</p></div>
-<div class="owner-card"><h3>Adminverwaltung</h3><p>Leitung und Administration verwalten.</p></div>
-<div class="owner-card"><h3>Command Manager</h3><p>Commands hinzufügen und entfernen.</p></div>
-<div class="owner-card"><h3>Bewerbungsmanager</h3><p>Bewerbungen und Entscheidungen verwalten.</p></div>
-<div class="owner-card"><h3>Teamverwaltung</h3><p>Teammitglieder und Zuständigkeiten verwalten.</p></div>
-<div class="owner-card"><h3>Systemeinstellungen</h3><p>Einstellungen für FEUERWOLF HOME.</p></div>
-</div>
-</section>
-
-<p id="status">Verbindung wird geprüft...</p>
 </main>
 
 <script>
 const SUPABASE_URL = "https://oiwtnewzawkerwteatae.supabase.co";
 const SUPABASE_KEY = "sb_publishable_17z6ME3aWaJ4ARzcjDAIhg_mVNQTsZN";
 
-const client = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const db = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let allMembers = [];
 
-async function checkLogin(){
-  const {data,error}=await client.auth.getUser();
-  if(error||!data.user){
-    window.location.replace("login.html");
+async function start(){
+  const {data:{session}} = await db.auth.getSession();
+
+  if(!session){
+    location.href="login.html";
     return;
   }
 
-  const user=data.user;
-  const {data:profile}=await client.from("profiles")
-    .select("username").eq("id",user.id).maybeSingle();
+  const {data:profile} = await db
+    .from("profiles")
+    .select("username")
+    .eq("id",session.user.id)
+    .single();
 
-  document.getElementById("username").textContent=
-    profile?.username||user.user_metadata?.username||"Mitglied";
+  document.getElementById("username").textContent =
+    profile?.username || session.user.email;
 
-  const {data:roleData,error:roleError}=await client
-    .from("member_roles").select("role")
-    .eq("user_id",user.id).maybeSingle();
+  const {data:roleData,error:roleError} = await db
+    .from("member_roles")
+    .select("role")
+    .eq("user_id",session.user.id)
+    .single();
 
-  if(roleError){
-    document.getElementById("role").textContent="Nicht verfügbar";
-    document.getElementById("status").textContent=
-      "Rollen konnten nicht geladen werden.";
+  if(roleError || roleData?.role !== "owner"){
+    document.getElementById("status").textContent =
+      "Kein Zugriff auf die Mitgliederverwaltung.";
     return;
   }
 
-  const role=roleData?.role||"member";
-  document.getElementById("role").textContent=role;
-
-  if(role==="owner"){
-    document.getElementById("ownerArea").classList.remove("hidden");
-  }
-
-  document.getElementById("status").textContent=
-    "Du bist erfolgreich angemeldet.";
+  document.getElementById("role").textContent = "Projektinhaber";
+  loadMembers();
 }
 
-document.getElementById("logoutButton").addEventListener("click",async()=>{
-  await client.auth.signOut();
-  window.location.replace("login.html");
-});
+async function loadMembers(){
+  document.getElementById("status").textContent = "Mitglieder werden geladen...";
 
-checkLogin();
+  const {data,error} = await db
+    .from("profiles")
+    .select("id,username,created_at")
+    .order("created_at",{ascending:false});
+
+  if(error){
+    document.getElementById("status").textContent =
+      "Fehler beim Laden: " + error.message;
+    return;
+  }
+
+  allMembers = data || [];
+  showMembers(allMembers);
+}
+
+function showMembers(list){
+  document.getElementById("status").textContent =
+    list.length + " Mitglieder gefunden.";
+
+  document.getElementById("members").innerHTML =
+    list.map(member => `
+      <div class="member">
+        <strong>${escapeHTML(member.username || "Unbekannt")}</strong>
+        <p class="muted">Registriert: ${
+          member.created_at
+            ? new Date(member.created_at).toLocaleDateString("de-DE")
+            : "Unbekannt"
+        }</p>
+      </div>
+    `).join("");
+}
+
+function filterMembers(){
+  const term = document.getElementById("search").value.toLowerCase();
+
+  showMembers(allMembers.filter(member =>
+    (member.username || "").toLowerCase().includes(term)
+  ));
+}
+
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g,char => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  })[char]);
+}
+
+async function logout(){
+  await db.auth.signOut();
+  location.href="login.html";
+}
+
+start();
 </script>
 </body>
 </html>
