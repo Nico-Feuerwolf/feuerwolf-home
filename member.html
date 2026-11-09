@@ -22,6 +22,7 @@ button{background:#c81920;color:white;border:0;padding:11px 16px;border-radius:7
 button:hover{background:#ed3038}
 button.secondary{background:#444}
 button.danger{background:#8d171c}
+button:disabled{opacity:.5;cursor:not-allowed}
 input,textarea,select{width:100%;padding:12px;margin:8px 0;background:#292929;color:white;border:1px solid #555;border-radius:7px}
 input[type="checkbox"]{width:auto}
 input[type="datetime-local"]{color-scheme:dark}
@@ -34,6 +35,7 @@ label{display:block;margin-top:10px;color:#ccc}
 .status{color:#aaa;margin:10px 0}
 hr{border:0;border-top:1px solid #444;margin:18px 0}
 .member-role{max-width:350px}
+.member-id{font-size:12px;word-break:break-all;color:#888}
 </style>
 </head>
 
@@ -44,6 +46,7 @@ hr{border:0;border-top:1px solid #444;margin:18px 0}
 </header>
 
 <main>
+
 <div class="panel">
 <h2>Willkommen im Member Center</h2>
 <p>Angemeldet als: <strong id="username">Lädt...</strong></p>
@@ -62,17 +65,20 @@ hr{border:0;border-top:1px solid #444;margin:18px 0}
 <section id="dashboard" class="panel">
 <h2>Community-Dashboard</h2>
 <p>Willkommen bei FEUERWOLF HOME!</p>
+
 <div class="grid">
 <div class="card">
 <h3>Community</h3>
 <p class="muted">Hier findest du Neuigkeiten und Informationen aus unserer Community.</p>
 <button onclick="showSection('news')">Neuigkeiten ansehen</button>
 </div>
+
 <div class="card">
 <h3>Events</h3>
 <p class="muted">Entdecke kommende Veranstaltungen.</p>
 <button onclick="showSection('events')">Events ansehen</button>
 </div>
+
 <div class="card">
 <h3>Dein Profil</h3>
 <p>Benutzername: <strong id="profileName">-</strong></p>
@@ -104,6 +110,7 @@ hr{border:0;border-top:1px solid #444;margin:18px 0}
 <p class="muted">Du hast als Projektinhaber Zugriff auf alle Bereiche.</p>
 
 <div class="grid">
+
 <div class="card">
 <h3>Neuigkeit erstellen</h3>
 <label>Titel</label>
@@ -127,6 +134,7 @@ hr{border:0;border-top:1px solid #444;margin:18px 0}
 <label><input type="checkbox" id="eventPublished"> Sofort veröffentlichen</label>
 <button onclick="saveCommunityEvent()">Event speichern</button>
 </div>
+
 </div>
 
 <hr>
@@ -161,7 +169,11 @@ const roleNames = {
 
 function escapeHTML(value){
  return String(value ?? "").replace(/[&<>"']/g,c=>({
-  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  "&":"&amp;",
+  "<":"&lt;",
+  ">":"&gt;",
+  '"':"&quot;",
+  "'":"&#39;"
  })[c]);
 }
 
@@ -227,6 +239,7 @@ async function start(){
   }
 
   showSection("dashboard");
+
  }catch(error){
   setStatus("Fehler beim Start: "+error.message);
  }
@@ -522,9 +535,16 @@ async function loadMembers(){
  }
 
  allRoles = roles || [];
+
  allMembers = (profiles || []).map(member=>{
-  const memberRole = allRoles.find(r=>r.user_id===member.id);
-  return {...member,role:memberRole?.role || "member"};
+  const foundRole = allRoles.find(
+   r => String(r.user_id).toLowerCase() === String(member.id).toLowerCase()
+  );
+
+  return {
+   ...member,
+   role: foundRole ? foundRole.role : "member"
+  };
  });
 
  displayMembers(allMembers);
@@ -539,16 +559,31 @@ function displayMembers(list){
  }
 
  box.innerHTML = list.map(m=>{
-  const isSelf = m.id === currentUser.id;
+  const isSelf = String(m.id).toLowerCase() === String(currentUser.id).toLowerCase();
   const isTargetOwner = m.role === "owner";
 
   return `
    <div class="card">
     <strong>${escapeHTML(m.username || "Unbekannt")}</strong>
-    <p class="muted">Registriert: ${m.created_at ? new Date(m.created_at).toLocaleDateString("de-DE") : "Unbekannt"}</p>
-    <p>Aktuelle Rolle: <strong>${escapeHTML(roleNames[m.role] || m.role)}</strong></p>
-    ${isTargetOwner ? '<p class="muted">Projektinhaber – geschützt</p>' : `
+
+    <p class="member-id">
+     Benutzer-ID: ${escapeHTML(m.id)}
+    </p>
+
+    <p class="muted">
+     Registriert: ${m.created_at ? new Date(m.created_at).toLocaleDateString("de-DE") : "Unbekannt"}
+    </p>
+
+    <p>
+     Aktuelle Rolle:
+     <strong>${escapeHTML(roleNames[m.role] || m.role)}</strong>
+    </p>
+
+    ${isTargetOwner ? `
+     <p class="muted">Projektinhaber – geschützt</p>
+    ` : `
      <label>Neue Rolle</label>
+
      <select class="member-role" id="role-${escapeHTML(m.id)}" ${isSelf ? "disabled" : ""}>
       <option value="member" ${m.role==="member"?"selected":""}>Mitglied</option>
       <option value="support" ${m.role==="support"?"selected":""}>Support</option>
@@ -556,7 +591,10 @@ function displayMembers(list){
       <option value="admin" ${m.role==="admin"?"selected":""}>Administrator</option>
       <option value="deputy_owner" ${m.role==="deputy_owner"?"selected":""}>Stellvertretender Projektinhaber</option>
      </select>
-     <button onclick="changeMemberRole('${escapeHTML(m.id)}')" ${isSelf?"disabled":""}>Rolle speichern</button>
+
+     <button onclick="changeMemberRole('${escapeHTML(m.id)}')" ${isSelf ? "disabled" : ""}>
+      Rolle speichern
+     </button>
     `}
    </div>
   `;
@@ -569,7 +607,7 @@ async function changeMemberRole(userId){
   return;
  }
 
- if(userId === currentUser.id){
+ if(String(userId).toLowerCase() === String(currentUser.id).toLowerCase()){
   setStatus("Du kannst deine eigene Rolle hier nicht ändern.");
   return;
  }
@@ -606,7 +644,9 @@ function filterMembers(){
  const term = document.getElementById("memberSearch").value.toLowerCase();
 
  displayMembers(allMembers.filter(m=>
-  (m.username || "").toLowerCase().includes(term)
+  (m.username || "").toLowerCase().includes(term) ||
+  String(m.id).toLowerCase().includes(term) ||
+  (roleNames[m.role] || m.role).toLowerCase().includes(term)
  ));
 }
 
